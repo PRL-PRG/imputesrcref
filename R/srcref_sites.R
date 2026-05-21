@@ -1,3 +1,7 @@
+is_braced <- function(expr) {
+  is.call(expr) && is.symbol(expr[[1]]) && identical(as.character(expr[[1]]), "{")
+}
+
 deparse_one_line <- function(expr) {
   # Canonical single-line representation for stable snapshot output.
   txt <- paste(deparse(expr, width.cutoff = 500L), collapse = " ")
