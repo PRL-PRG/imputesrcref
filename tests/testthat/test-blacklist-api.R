@@ -6,7 +6,7 @@ test_that("SPECIALSXP calls are blacklisted by default", {
   expect_true("quote" %in% imputesrcref::get_impute_blacklist(include_default = TRUE))
   expect_identical(imputesrcref::get_impute_blacklist(include_default = FALSE), character())
 
-  fn <- make_fn("function() quote(x + 1)")
+  fn <- make_fn("function() { quote(x + 1) }")
   out <- imputesrcref::impute_srcrefs(fn)
   sites <- imputesrcref:::collect_srcref_sites(out)
 
@@ -19,7 +19,7 @@ test_that("user blacklist entries are applied and resettable", {
   on.exit(options(imputesrcref.wrap_arg_blacklist = old), add = TRUE)
   imputesrcref::reset_impute_blacklist()
 
-  fn <- make_fn("function(x) g(x + 1)")
+  fn <- make_fn("function(x) { g(x + 1) }")
   wrapped <- imputesrcref::impute_srcrefs(fn)
   wrapped_sites <- imputesrcref:::collect_srcref_sites(wrapped)
   expect_true(any(grepl("g\\(\\{ x \\+ 1 \\}\\)", wrapped_sites)))
@@ -41,7 +41,7 @@ test_that("generic argument wrapping only applies to call expressions", {
   on.exit(options(imputesrcref.wrap_arg_blacklist = old), add = TRUE)
   imputesrcref::reset_impute_blacklist()
 
-  fn <- make_fn("function(x) g(x + 1, 1, x)")
+  fn <- make_fn("function(x) { g(x + 1, 1, x) }")
   out <- imputesrcref::impute_srcrefs(fn)
   sites <- imputesrcref:::collect_srcref_sites(out)
 
@@ -55,7 +55,7 @@ test_that("wrap_call_args can disable generic argument wrapping", {
   on.exit(options(imputesrcref.wrap_arg_blacklist = old), add = TRUE)
   imputesrcref::reset_impute_blacklist()
 
-  fn <- make_fn("function(x) g(x + 1)")
+  fn <- make_fn("function(x) { g(x + 1) }")
   out <- imputesrcref::impute_srcrefs(fn, wrap_call_args = FALSE)
   sites <- imputesrcref:::collect_srcref_sites(out)
 
