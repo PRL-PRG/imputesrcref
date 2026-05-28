@@ -10,7 +10,8 @@ test_that("ggplot2 full package srcref imputation is stable", {
   fn_names <- res$fn_names
   failed <- sum(!is.na(res$failed))
   patched <- res$patched_count
-  non_missing <- sum(!is.na(res$failed) & !grepl("missing parse data", res$failed, fixed = TRUE))
+  skippable <- c("missing parse data", "no srcref")
+  non_missing <- sum(!is.na(res$failed) & !(res$failed %in% skippable))
 
   expect_gt(length(fn_names), 0L)
   expect_gt(patched, 0L)

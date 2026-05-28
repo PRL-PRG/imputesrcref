@@ -57,9 +57,12 @@ static SEXP get_in(const char *name, SEXP envir) {
 
 static int identical_(SEXP a, SEXP b) {
     SEXP fn = PROTECT(base_fun("identical"));
-    SEXP r = PROTECT(two_arg_call(fn, a, b));
+    SEXP qa = PROTECT(Rf_lang2(Rf_install("quote"), a));
+    SEXP qb = PROTECT(Rf_lang2(Rf_install("quote"), b));
+    SEXP call = PROTECT(Rf_lang3(fn, qa, qb));
+    SEXP r = PROTECT(Rf_eval(call, R_GlobalEnv));
     int v = TYPEOF(r) == LGLSXP && LOGICAL(r)[0] == TRUE;
-    UNPROTECT(2);
+    UNPROTECT(5);
     return v;
 }
 
@@ -207,16 +210,6 @@ static SEXP try_impute_srcrefs(SEXP fn, int *err, char *msg_out, size_t msg_size
     return res;
 }
 
-static SEXP try_get_parse_data(SEXP fn) {
-    SEXP f = PROTECT(Rf_findFun(Rf_install("getParseData"), R_BaseNamespace));
-    SEXP call = PROTECT(Rf_lang2(f, fn));
-    int err = 0;
-    SEXP res = R_tryEval(call, R_GlobalEnv, &err);
-    UNPROTECT(2);
-    if (err) return R_NilValue;
-    return res;
-}
-
 SEXP C_source_impute_srcrefs(SEXP file, SEXP envir, SEXP chdir,
                               SEXP keep_source, SEXP keep_parse_data,
                               SEXP toplevel_env, SEXP all_names) {
@@ -251,6 +244,9 @@ SEXP C_source_impute_srcrefs(SEXP file, SEXP envir, SEXP chdir,
     SEXP imputed = PROTECT(Rf_allocVector(STRSXP, n_post));
     int n_imputed = 0;
 
+    int saved_quiet = imputesrcref_quiet;
+    imputesrcref_quiet = 1;
+
     for (R_xlen_t i = 0; i < n_post; i++) {
         const char *nm = CHAR(STRING_ELT(post_names, i));
         if (!exists_in(nm, envir)) continue;
@@ -284,6 +280,8 @@ SEXP C_source_impute_srcrefs(SEXP file, SEXP envir, SEXP chdir,
         SET_STRING_ELT(imputed, n_imputed++, STRING_ELT(post_names, i));
         UNPROTECT(2);
     }
+
+    imputesrcref_quiet = saved_quiet;
 
     SEXP imputed_trim = PROTECT(Rf_allocVector(STRSXP, n_imputed));
     for (int i = 0; i < n_imputed; i++) SET_STRING_ELT(imputed_trim, i, STRING_ELT(imputed, i));
@@ -346,16 +344,12 @@ SEXP C_impute_package_srcrefs(SEXP package, SEXP include_internal, SEXP verbose)
     SEXP failed = PROTECT(Rf_allocVector(STRSXP, fn_n));
     for (R_xlen_t i = 0; i < fn_n; i++) SET_STRING_ELT(failed, i, NA_STRING);
 
+    int saved_quiet = imputesrcref_quiet;
+    imputesrcref_quiet = 1;
+
     for (R_xlen_t i = 0; i < fn_n; i++) {
         const char *nm = CHAR(STRING_ELT(final_names, i));
         SEXP fn = PROTECT(get_in(nm, env));
-
-        SEXP pd = try_get_parse_data(fn);
-        if (pd == R_NilValue) {
-            SET_STRING_ELT(failed, i, Rf_mkChar("missing parse data"));
-            UNPROTECT(1);
-            continue;
-        }
 
         char err_msg[2048];
         err_msg[0] = '\0';
@@ -367,6 +361,14 @@ SEXP C_impute_package_srcrefs(SEXP package, SEXP include_internal, SEXP verbose)
             continue;
         }
 
+        /* impute returned the input unchanged when neither srcref nor parse
+           data + deparse fallback were available — nothing to commit. */
+        if (patched == fn) {
+            SET_STRING_ELT(failed, i, Rf_mkChar("no srcref"));
+            UNPROTECT(2);
+            continue;
+        }
+
         int locked = binding_is_locked(nm, env);
         if (locked) unlock_binding_(nm, env);
         assign_in(nm, patched, env);
@@ -374,6 +376,8 @@ SEXP C_impute_package_srcrefs(SEXP package, SEXP include_internal, SEXP verbose)
 
         UNPROTECT(2);
     }
+
+    imputesrcref_quiet = saved_quiet;
 
     int patched_cnt = 0;
     for (R_xlen_t i = 0; i < fn_n; i++) {

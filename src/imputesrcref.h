@@ -49,6 +49,8 @@ SEXP imputesrcref_transform_expr(SEXP expr, int node_id, parse_ctx *ctx);
 
 SEXP imputesrcref_source_text(SEXP fn);
 
+extern int imputesrcref_quiet;
+
 int imputesrcref_visual_col_to_byte_col(const char *line, int visual_col);
 
 SEXP imputesrcref_effective_blacklist(void);

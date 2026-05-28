@@ -199,7 +199,12 @@ SEXP imputesrcref_transform_expr(SEXP expr, int node_id, parse_ctx *ctx) {
             SEXP cell = fmls;
             while (cell != R_NilValue) {
                 SEXP val = CAR(cell);
-                if (val != R_MissingArg && val != R_NilValue && !(TYPEOF(val) == SYMSXP && CHAR(PRINTNAME(val))[0] == '\0')) {
+                /* Skip only true "missing" defaults: R_MissingArg (the empty
+                   symbol). Legitimate NULL defaults (function(x = NULL)) still
+                   appear as expr nodes in parse data and must advance the
+                   cursor, otherwise subsequent defaults are mis-paired with
+                   prior expr children. */
+                if (val != R_MissingArg) {
                     if (cursor >= n_ids) Rf_error("Parse mapping mismatch for function formals");
                     int cid = child_ids[cursor++];
                     SEXP newv = PROTECT(imputesrcref_transform_expr(val, cid, ctx));

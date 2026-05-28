@@ -7,6 +7,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_reset_impute_blacklist",  (DL_FUNC) &C_reset_impute_blacklist,  0},
     {"C_impute_package_srcrefs",  (DL_FUNC) &C_impute_package_srcrefs,  3},
     {"C_source_impute_srcrefs",   (DL_FUNC) &C_source_impute_srcrefs,   7},
+    {"C_collect_srcref_sites",    (DL_FUNC) &C_collect_srcref_sites,    1},
+    {"C_collect_transparent_srcref_checks", (DL_FUNC) &C_collect_transparent_srcref_checks, 1},
+    {"C_assert_transparent_srcref_consistency", (DL_FUNC) &C_assert_transparent_srcref_consistency, 1},
     {NULL, NULL, 0}
 };
 

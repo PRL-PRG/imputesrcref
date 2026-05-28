@@ -43,7 +43,9 @@ and assigns srcrefs to injected `{` calls using parse-data-derived source spans.
 - `source_impute_srcrefs(file, envir = parent.frame(), ...)`
   - Source an R file and patch all changed/new functions in the target environment.
 - `impute_package_srcrefs(package, include_internal = TRUE, ...)`
-  - Patch package namespace functions if parse data is available
+  - Patch package namespace functions. Works for any package whose functions
+    retain `srcref` metadata (the default for source installs); cached parse
+    data is no longer required.
 - `get_impute_blacklist(include_default = TRUE)`
   - Inspect call names excluded from generic argument wrapping.
 - `set_impute_blacklist(functions, append = TRUE)`
@@ -51,16 +53,25 @@ and assigns srcrefs to injected `{` calls using parse-data-derived source spans.
 - `reset_impute_blacklist()`
   - Clear user blacklist entries.
 
-## Important: package installs and parse data
+## Installed packages: srcref retention
 
-For installed packages, parse data is often missing unless the package was
-installed from source with source/parse retention enabled.
-
-Recommended installation pattern:
+`impute_package_srcrefs()` requires each function to carry a `srcref`
+attribute. Source installs retain this by default. Binary installs often do
+too, but if `srcref` is missing the function will be skipped (`failed[i] ==
+"no srcref"`). To force retention explicitly, install from source with:
 
 ```r
-    install.packages("<package>", INSTALL_opts=c("--with-keep.source", "--with-keep.parse.data"))
+install.packages("<package>", INSTALL_opts = "--with-keep.source")
 ```
+
+Cached parse data (`--with-keep.parse.data`) is no longer required —
+`impute_srcrefs()` re-parses from the function's source lines when no parse
+data is attached.
+
+For functions that truly lack `srcref` (e.g. some generated closures),
+`options(imputesrcref.allow_deparse_fallback = TRUE)` will impute against a
+deparsed copy of the function instead, at the cost of source line numbers
+shifting to the deparsed layout.
 
 ## Usage
 
@@ -93,9 +104,9 @@ Returned fields are:
 
 - `package`
 - `fn_names`
-- `failed` (`NA` means successfully patched)
+- `failed` (`NA` means successfully patched; otherwise a short reason
+  such as `"no srcref"` or an error message)
 - `patched_count`
-- `install_command` (reinstall hint when nothing could be patched)
 
 ### Blacklist API
 
@@ -148,6 +159,13 @@ Run the optional full ggplot2 package test:
 ```r
 FULL_TEST=1 Rscript -e "testthat::test_file('tests/testthat/test-package-srcref-imputation.R')"
 ```
+
+## Implementation
+
+The package's internals are implemented in C and invoked from thin R wrappers
+via `.Call`. Building from source requires a C toolchain (`Rtools` on
+Windows, the standard `R CMD INSTALL` toolchain on macOS / Linux). No
+external libraries are needed.
 
 ## Acknowledgements
 

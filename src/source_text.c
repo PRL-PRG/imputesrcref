@@ -1,6 +1,8 @@
 #include "imputesrcref.h"
 #include <string.h>
 
+int imputesrcref_quiet = 0;
+
 int imputesrcref_visual_col_to_byte_col(const char *line, int visual_col) {
     int vis = 1;
     int i;
@@ -86,11 +88,18 @@ SEXP imputesrcref_source_text(SEXP fn) {
     if (sr == R_NilValue) {
         int allow = get_option_logical("imputesrcref.allow_deparse_fallback", 0);
         if (!allow) {
-            emit_message(
-                "Function has no srcref metadata and deparse fallback is disabled; "
-                "no changes were made. Set "
-                "options(imputesrcref.allow_deparse_fallback = TRUE) to enable "
-                "deparse-based fallback.");
+            /* `imputesrcref_quiet` only suppresses the per-function warning
+               during batch processing; it does NOT override the user's
+               deparse-fallback preference. If the user enabled fallback they
+               have already accepted that line numbers for no-srcref functions
+               may shift to deparsed-source coordinates. */
+            if (!imputesrcref_quiet) {
+                emit_message(
+                    "Function has no srcref metadata and deparse fallback is disabled; "
+                    "no changes were made. Set "
+                    "options(imputesrcref.allow_deparse_fallback = TRUE) to enable "
+                    "deparse-based fallback.");
+            }
             return R_NilValue;
         }
         SEXP dep = PROTECT(call_deparse_500(fn));
