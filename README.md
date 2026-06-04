@@ -154,10 +154,33 @@ UPDATE_SNAPSHOTS=1 Rscript -e "testthat::test_dir('tests/testthat', load_package
 
 By default, mismatches fail. With `UPDATE_SNAPSHOTS=1`, the snapshot file is rewritten.
 
-Run the optional full ggplot2 package test:
+### Package corpus tests
 
-```r
-FULL_TEST=1 Rscript -e "testthat::test_file('tests/testthat/test-package-srcref-imputation.R')"
+`tests/testthat/test-package-srcref-imputation.R` runs whole-package srcref
+imputation over a corpus of popular packages (`data.table`, `dplyr`, `fs`,
+`ggplot2`, `glue`, `jsonlite`, `stringr`, `zoo`). For each it asserts that no
+function fails for an unexpected reason and that a sample of patched functions
+is idempotent and srcref-text-consistent (the line-accuracy guarantee).
+
+These tests are slow and require the corpus packages to be installed **with
+srcref retention**, so they are gated behind `FULL_TEST=1` and skip gracefully
+when a package is absent or was installed without srcref.
+
+The `Makefile` provides targets for this. The corpus is installed into a
+separate library (`CORPUS_LIB`, default `~/Rlib_test`) so your main library is
+left untouched:
+
+```sh
+make corpus-install   # install the 8 corpus packages with srcref (run once)
+make test-full        # run the full suite including the corpus tests
+```
+
+Use a different library with `make test-full CORPUS_LIB=/path/to/lib`. Or run
+it directly:
+
+```sh
+FULL_TEST=1 Rscript -e \
+  ".libPaths(c('~/Rlib_test', .libPaths())); testthat::test_file('tests/testthat/test-package-srcref-imputation.R')"
 ```
 
 ## Implementation
