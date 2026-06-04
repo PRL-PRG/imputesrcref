@@ -27,6 +27,13 @@ typedef struct parse_ctx {
     SEXP srcfile;
     int line_offset;
     int first_col_offset;
+    /* Untrimmed source lines spanned by the function, used to convert the
+       parse data's visual (tab-expanded) columns into byte offsets for the
+       srcref byte slots. `abs_lines[k]` is original-file line
+       `abs_lines_start + k`. */
+    SEXP abs_lines;
+    int n_abs_lines;
+    int abs_lines_start;
     SEXP arg_wrap_blacklist;
     int wrap_call_args;
 } parse_ctx;

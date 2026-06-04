@@ -107,17 +107,21 @@ SEXP imputesrcref_source_text(SEXP fn) {
         const char *txt = CHAR(STRING_ELT(collapsed, 0));
         SEXP srcfile = PROTECT(call_srcfilecopy("<deparse>", txt));
 
-        SEXP out = PROTECT(Rf_allocVector(VECSXP, 4));
-        SEXP nms = PROTECT(Rf_allocVector(STRSXP, 4));
+        SEXP out = PROTECT(Rf_allocVector(VECSXP, 5));
+        SEXP nms = PROTECT(Rf_allocVector(STRSXP, 5));
         SET_STRING_ELT(nms, 0, Rf_mkChar("text"));
         SET_STRING_ELT(nms, 1, Rf_mkChar("srcfile"));
         SET_STRING_ELT(nms, 2, Rf_mkChar("line_offset"));
         SET_STRING_ELT(nms, 3, Rf_mkChar("first_col_offset"));
+        SET_STRING_ELT(nms, 4, Rf_mkChar("lines"));
         Rf_setAttrib(out, R_NamesSymbol, nms);
         SET_VECTOR_ELT(out, 0, collapsed);
         SET_VECTOR_ELT(out, 1, srcfile);
         SET_VECTOR_ELT(out, 2, Rf_ScalarInteger(0));
         SET_VECTOR_ELT(out, 3, Rf_ScalarInteger(0));
+        /* Deparsed source lines: line_offset is 0, so absolute line k maps to
+           dep[k-1]. */
+        SET_VECTOR_ELT(out, 4, dep);
         UNPROTECT(5);
         return out;
     }
@@ -218,17 +222,22 @@ SEXP imputesrcref_source_text(SEXP fn) {
 
     SEXP collapsed = PROTECT(paste_lines(new_lines));
 
-    SEXP out = PROTECT(Rf_allocVector(VECSXP, 4));
-    SEXP nms = PROTECT(Rf_allocVector(STRSXP, 4));
+    SEXP out = PROTECT(Rf_allocVector(VECSXP, 5));
+    SEXP nms = PROTECT(Rf_allocVector(STRSXP, 5));
     SET_STRING_ELT(nms, 0, Rf_mkChar("text"));
     SET_STRING_ELT(nms, 1, Rf_mkChar("srcfile"));
     SET_STRING_ELT(nms, 2, Rf_mkChar("line_offset"));
     SET_STRING_ELT(nms, 3, Rf_mkChar("first_col_offset"));
+    SET_STRING_ELT(nms, 4, Rf_mkChar("lines"));
     Rf_setAttrib(out, R_NamesSymbol, nms);
     SET_VECTOR_ELT(out, 0, collapsed);
     SET_VECTOR_ELT(out, 1, srcfile);
     SET_VECTOR_ELT(out, 2, Rf_ScalarInteger(chosen_start_line - 1));
     SET_VECTOR_ELT(out, 3, Rf_ScalarInteger(chosen_start_col - 1));
+    /* Untrimmed source lines for [chosen_start_line, chosen_end_line]; used to
+       convert visual columns to byte offsets. Absolute line k maps to
+       lines[k - chosen_start_line]. */
+    SET_VECTOR_ELT(out, 4, lines);
 
     UNPROTECT(5);
     return out;

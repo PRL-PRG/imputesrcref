@@ -653,6 +653,15 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
     parse_ctx ctx;
     imputesrcref_build_ctx(&ctx, pd, srcfile, line_offset, first_col_offset, blacklist, wrap_call_args);
 
+    /* Source lines for visual->byte column conversion in node_srcref. Absolute
+       line k maps to lines[k - (line_offset + 1)]. */
+    SEXP src_lines = VECTOR_ELT(src, 4);
+    if (TYPEOF(src_lines) == STRSXP) {
+        ctx.abs_lines = src_lines;
+        ctx.n_abs_lines = (int) Rf_xlength(src_lines);
+        ctx.abs_lines_start = line_offset + 1;
+    }
+
     /* Build fn_expr = call("function", formals(fn), body(fn)) */
     SEXP fmls = PROTECT(call_formals(fn));
     SEXP bdy = PROTECT(call_body(fn));

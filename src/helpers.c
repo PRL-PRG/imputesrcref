@@ -124,6 +124,9 @@ void imputesrcref_build_ctx(parse_ctx *ctx, SEXP pd, SEXP srcfile,
     ctx->srcfile = srcfile;
     ctx->line_offset = line_offset;
     ctx->first_col_offset = first_col_offset;
+    ctx->abs_lines = R_NilValue;
+    ctx->n_abs_lines = 0;
+    ctx->abs_lines_start = 1;
     ctx->arg_wrap_blacklist = arg_wrap_blacklist;
     ctx->wrap_call_args = wrap_call_args;
 
@@ -218,14 +221,39 @@ SEXP imputesrcref_node_srcref(int node_id, parse_ctx *ctx) {
     if (node_id < 0 || node_id > ctx->max_id) Rf_error("Missing parse node id %d", node_id);
     int row = ctx->id_to_pdrow[node_id];
     if (row < 0) Rf_error("Missing parse node id %d", node_id);
-    int l1 = ctx->line1[row] + ctx->line_offset;
-    int l2 = ctx->line2[row] + ctx->line_offset;
-    int c1 = ctx->col1[row] + (ctx->line1[row] == 1 ? ctx->first_col_offset : 0);
-    int c2 = ctx->col2[row] + (ctx->line2[row] == 1 ? ctx->first_col_offset : 0);
+    int rl1 = ctx->line1[row];
+    int rl2 = ctx->line2[row];
+
+    int l1 = rl1 + ctx->line_offset;
+    int l2 = rl2 + ctx->line_offset;
+    /* Visual (tab-expanded) columns in the original-file coordinate system. */
+    int c1 = ctx->col1[row] + (rl1 == 1 ? ctx->first_col_offset : 0);
+    int c2 = ctx->col2[row] + (rl2 == 1 ? ctx->first_col_offset : 0);
+
+    /* Byte offsets for the srcref byte slots (2 and 4). R stores bytes there
+       and visual columns in slots 5/6; `as.character.srcref` (used by deparse,
+       getSrcref and covr) slices source by the byte slots. The parse data only
+       gives visual columns, so convert against the absolute source line. `l1`
+       and `c1` are already absolute coordinates, so this works uniformly for
+       the paren-wrapped and deparse-fallback cases. Fall back to the visual
+       value when the line is unavailable. */
+    int b1 = c1, b2 = c2;
+    if (ctx->abs_lines != R_NilValue) {
+        int idx1 = l1 - ctx->abs_lines_start;
+        int idx2 = l2 - ctx->abs_lines_start;
+        if (idx1 >= 0 && idx1 < ctx->n_abs_lines) {
+            b1 = imputesrcref_visual_col_to_byte_col(
+                CHAR(STRING_ELT(ctx->abs_lines, idx1)), c1);
+        }
+        if (idx2 >= 0 && idx2 < ctx->n_abs_lines) {
+            b2 = imputesrcref_visual_col_to_byte_col(
+                CHAR(STRING_ELT(ctx->abs_lines, idx2)), c2);
+        }
+    }
 
     SEXP sr = PROTECT(Rf_allocVector(INTSXP, 8));
     int *p = INTEGER(sr);
-    p[0] = l1; p[1] = c1; p[2] = l2; p[3] = c2;
+    p[0] = l1; p[1] = b1; p[2] = l2; p[3] = b2;
     p[4] = c1; p[5] = c2; p[6] = l1; p[7] = l2;
     Rf_setAttrib(sr, Rf_install("srcfile"), ctx->srcfile);
     SEXP cls = PROTECT(Rf_mkString("srcref"));
