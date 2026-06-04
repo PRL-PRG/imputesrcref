@@ -113,10 +113,14 @@ static SEXP do_srcref_to_text(SEXP sr) {
     }
 
     SEXP new_lines = PROTECT(Rf_duplicate(lines));
+    /* sc/ec are visual (tab-expanded) columns; substr() needs byte positions.
+       For tab-indented source these differ, so convert before slicing
+       (matches the conversion done in source_text_from_srcref). */
     if (n == 1) {
         const char *l = CHAR(STRING_ELT(new_lines, 0));
         int len = (int) strlen(l);
-        int s = sc, e = ec;
+        int s = imputesrcref_visual_col_to_byte_col(l, sc);
+        int e = imputesrcref_visual_col_to_byte_col(l, ec);
         if (s < 1) s = 1;
         if (e > len) e = len;
         int slen = e - s + 1;
@@ -128,7 +132,7 @@ static SEXP do_srcref_to_text(SEXP sr) {
     } else {
         const char *l0 = CHAR(STRING_ELT(new_lines, 0));
         int len0 = (int) strlen(l0);
-        int s = sc;
+        int s = imputesrcref_visual_col_to_byte_col(l0, sc);
         if (s < 1) s = 1;
         int slen0 = len0 - s + 1;
         if (slen0 < 0) slen0 = 0;
@@ -139,7 +143,7 @@ static SEXP do_srcref_to_text(SEXP sr) {
 
         const char *ln = CHAR(STRING_ELT(new_lines, n - 1));
         int lenN = (int) strlen(ln);
-        int e = ec;
+        int e = imputesrcref_visual_col_to_byte_col(ln, ec);
         if (e > lenN) e = lenN;
         int slenN = e;
         if (slenN < 0) slenN = 0;
