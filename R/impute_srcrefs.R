@@ -16,6 +16,10 @@
 #' @param fn A function.
 #' @param wrap_call_args If `TRUE` (default), wrap generic function-call
 #'   arguments that are call expressions.
+#' @param quiet If `TRUE`, suppress the informational message emitted when a
+#'   function has no srcref metadata and deparse fallback is disabled. Useful
+#'   for callers (such as coverage tools) that process many functions and
+#'   handle the no-srcref case themselves. Defaults to `FALSE`.
 #'
 #' @return A function with transformed body/formals and preserved function-level
 #'   attributes (including srcref/srcfile metadata when present).
@@ -35,6 +39,6 @@
 #' g <- impute_srcrefs(f)
 #' g
 #' @export
-impute_srcrefs <- function(fn, wrap_call_args = TRUE) {
-  .Call(C_impute_srcrefs, fn, wrap_call_args)
+impute_srcrefs <- function(fn, wrap_call_args = TRUE, quiet = FALSE) {
+  .Call(C_impute_srcrefs, fn, wrap_call_args, quiet)
 }

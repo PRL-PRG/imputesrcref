@@ -506,7 +506,13 @@ static SEXP call_parse(const char *text) {
     SET_TAG(CDR(call), Rf_install("text"));
     SET_TAG(CDDR(call), Rf_install("keep.source"));
     int err = 0;
-    SEXP res = R_tryEval(call, R_GlobalEnv, &err);
+    /* Use the silent variant: the first parse attempt is expected to fail for
+       functions defined inside a call (e.g. setMethod) whose extracted source
+       has `else` starting a line. The caller retries wrapped in `(...)`, so the
+       failure is normal control flow and must not be printed to stderr.
+       R_tryEval (non-silent) would emit the error via the C error handler,
+       which suppressMessages()/suppressWarnings() on the R side cannot catch. */
+    SEXP res = R_tryEvalSilent(call, R_GlobalEnv, &err);
     UNPROTECT(4);
     if (err) return R_NilValue;
     return res;
@@ -516,7 +522,7 @@ static SEXP call_getParseData(SEXP parsed) {
     SEXP fn = PROTECT(Rf_findFun(Rf_install("getParseData"), R_BaseNamespace));
     SEXP call = PROTECT(Rf_lang2(fn, parsed));
     int err = 0;
-    SEXP res = R_tryEval(call, R_GlobalEnv, &err);
+    SEXP res = R_tryEvalSilent(call, R_GlobalEnv, &err);
     UNPROTECT(2);
     if (err) return R_NilValue;
     return res;
@@ -538,7 +544,7 @@ static SEXP call_body(SEXP fn) {
     return res;
 }
 
-SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp) {
+SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
     if (TYPEOF(fn) != CLOSXP) {
         Rf_error("`fn` must be a function");
     }
@@ -546,11 +552,22 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp) {
         LOGICAL(wrap_call_args_sxp)[0] == NA_LOGICAL) {
         Rf_error("`wrap_call_args` must be TRUE or FALSE");
     }
+    if (TYPEOF(quiet_sxp) != LGLSXP || Rf_xlength(quiet_sxp) != 1 ||
+        LOGICAL(quiet_sxp)[0] == NA_LOGICAL) {
+        Rf_error("`quiet` must be TRUE or FALSE");
+    }
     int wrap_call_args = LOGICAL(wrap_call_args_sxp)[0];
+    int quiet = LOGICAL(quiet_sxp)[0];
 
     SEXP fn_attrs = PROTECT(Rf_duplicate(ATTRIB(fn)));
 
+    /* `quiet` only suppresses the "no srcref" message emitted by
+       source_text. OR with the ambient flag so a `quiet = TRUE` call inside an
+       already-quiet batch op never un-quiets it; restore immediately after. */
+    int saved_quiet = imputesrcref_quiet;
+    if (quiet) imputesrcref_quiet = 1;
     SEXP src = PROTECT(imputesrcref_source_text(fn));
+    imputesrcref_quiet = saved_quiet;
     if (src == R_NilValue) {
         UNPROTECT(2);
         return fn;

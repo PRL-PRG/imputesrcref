@@ -176,7 +176,9 @@ typedef struct {
 
 static SEXP impute_body(void *data) {
     impute_body_data *bd = (impute_body_data*) data;
-    return C_impute_srcrefs(bd->fn, Rf_ScalarLogical(1));
+    /* Batch ops already raise the ambient `imputesrcref_quiet` flag, so the
+       per-call quiet arg can stay FALSE here. */
+    return C_impute_srcrefs(bd->fn, Rf_ScalarLogical(1), Rf_ScalarLogical(0));
 }
 
 static char err_msg_buf[2048];

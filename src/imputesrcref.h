@@ -55,7 +55,7 @@ int imputesrcref_visual_col_to_byte_col(const char *line, int visual_col);
 
 SEXP imputesrcref_effective_blacklist(void);
 
-SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args);
+SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args, SEXP quiet);
 SEXP C_get_impute_blacklist(SEXP include_default);
 SEXP C_set_impute_blacklist(SEXP functions, SEXP append);
 SEXP C_reset_impute_blacklist(void);

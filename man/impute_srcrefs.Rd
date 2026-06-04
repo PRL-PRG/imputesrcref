@@ -4,13 +4,18 @@
 \alias{impute_srcrefs}
 \title{Impute transparent srcrefs for injected braces in a function AST.}
 \usage{
-impute_srcrefs(fn, wrap_call_args = TRUE)
+impute_srcrefs(fn, wrap_call_args = TRUE, quiet = FALSE)
 }
 \arguments{
 \item{fn}{A function.}
 
 \item{wrap_call_args}{If \code{TRUE} (default), wrap generic function-call
 arguments that are call expressions.}
+
+\item{quiet}{If \code{TRUE}, suppress the informational message emitted when a
+function has no srcref metadata and deparse fallback is disabled. Useful
+for callers (such as coverage tools) that process many functions and
+handle the no-srcref case themselves. Defaults to \code{FALSE}.}
 }
 \value{
 A function with transformed body/formals and preserved function-level
@@ -38,8 +43,8 @@ default. To allow fallback, set
 \code{options(impuresrcref.allow_deparse_fallback = TRUE)}.
 
 Generic call argument wrapping skips blacklisted callee names. By default the
-blacklist includes primitive \code{SPECIALSXP} calls from \code{builtins()}.
-Use \code{\link[=set_impute_blacklist]{set_impute_blacklist()}} / \code{\link[=reset_impute_blacklist]{reset_impute_blacklist()}} to customize.
+blacklist includes primitive \code{SPECIALSXP} calls from \code{builtins()}. Use
+\code{\link[=set_impute_blacklist]{set_impute_blacklist()}} / \code{\link[=reset_impute_blacklist]{reset_impute_blacklist()}} to customize.
 }
 \examples{
 options(keep.source = TRUE)

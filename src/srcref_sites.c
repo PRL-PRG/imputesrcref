@@ -101,7 +101,7 @@ static SEXP do_srcref_to_text(SEXP sr) {
     SEXP b = PROTECT(Rf_ScalarInteger(el));
     SEXP call = PROTECT(Rf_lang4(gsl_fn, srcfile, a, b));
     int err = 0;
-    SEXP lines = PROTECT(R_tryEval(call, R_GlobalEnv, &err));
+    SEXP lines = PROTECT(R_tryEvalSilent(call, R_GlobalEnv, &err));
     if (err) {
         UNPROTECT(5);
         return Rf_ScalarString(NA_STRING);
@@ -171,7 +171,7 @@ static SEXP do_canonicalize_text(SEXP text) {
     SET_TAG(CDR(call), Rf_install("text"));
     SET_TAG(CDDR(call), Rf_install("keep.source"));
     int err = 0;
-    SEXP parsed = R_tryEval(call, R_GlobalEnv, &err);
+    SEXP parsed = R_tryEvalSilent(call, R_GlobalEnv, &err);
     if (err) { UNPROTECT(3); return Rf_ScalarString(NA_STRING); }
     PROTECT(parsed);
     if (Rf_xlength(parsed) != 1) {

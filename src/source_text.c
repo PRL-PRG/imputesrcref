@@ -23,7 +23,7 @@ static SEXP call_getSrcLines(SEXP srcfile, int start_line, int end_line) {
     SEXP a = PROTECT(Rf_ScalarInteger(start_line));
     SEXP b = PROTECT(Rf_ScalarInteger(end_line));
     SEXP call = PROTECT(Rf_lang4(fn, srcfile, a, b));
-    SEXP res = R_tryEval(call, R_GlobalEnv, NULL);
+    SEXP res = R_tryEvalSilent(call, R_GlobalEnv, NULL);
     UNPROTECT(4);
     if (res == NULL) return R_NilValue;
     return res;
