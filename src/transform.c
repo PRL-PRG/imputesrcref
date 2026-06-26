@@ -544,6 +544,14 @@ static SEXP call_body(SEXP fn) {
     return res;
 }
 
+static SEXP call_attributes(SEXP x) {
+    SEXP f = PROTECT(Rf_findFun(Rf_install("attributes"), R_BaseEnv));
+    SEXP call = PROTECT(Rf_lang2(f, x));
+    SEXP res = Rf_eval(call, R_GlobalEnv);
+    UNPROTECT(2);
+    return res;
+}
+
 SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
     if (TYPEOF(fn) != CLOSXP) {
         Rf_error("`fn` must be a function");
@@ -559,8 +567,6 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
     int wrap_call_args = LOGICAL(wrap_call_args_sxp)[0];
     int quiet = LOGICAL(quiet_sxp)[0];
 
-    SEXP fn_attrs = PROTECT(Rf_duplicate(ATTRIB(fn)));
-
     /* `quiet` only suppresses the "no srcref" message emitted by
        source_text. OR with the ambient flag so a `quiet = TRUE` call inside an
        already-quiet batch op never un-quiets it; restore immediately after. */
@@ -569,7 +575,7 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
     SEXP src = PROTECT(imputesrcref_source_text(fn));
     imputesrcref_quiet = saved_quiet;
     if (src == R_NilValue) {
-        UNPROTECT(2);
+        UNPROTECT(1);
         return fn;
     }
 
@@ -666,31 +672,26 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
     SEXP fmls = PROTECT(call_formals(fn));
     SEXP bdy = PROTECT(call_body(fn));
     SEXP fnsym = PROTECT(Rf_install("function"));
-    SEXP fn_expr = PROTECT(Rf_allocList(3));
-    SET_TYPEOF(fn_expr, LANGSXP);
+    SEXP fn_expr = PROTECT(Rf_allocLang(3));
     SETCAR(fn_expr, fnsym);
     SETCAR(CDR(fn_expr), fmls);
     SETCAR(CDDR(fn_expr), bdy);
 
     SEXP transformed = PROTECT(imputesrcref_transform_expr(fn_expr, root_id, &ctx));
 
-    /* Apply to fn: out <- fn; formals(out) <- transformed[[2]]; body(out) <- transformed[[3]] */
-    SEXP out = PROTECT(Rf_duplicate(fn));
+    /* Apply to fn by constructing a closure with the original environment. */
     SEXP new_formals = CADR(transformed);
     SEXP new_body = CADDR(transformed);
+    SEXP fn_attrs = PROTECT(call_attributes(fn));
+    SEXP out = PROTECT(R_mkClosure(new_formals, new_body, R_ClosureEnv(fn)));
 
-    if (new_formals != R_NilValue) {
-        SET_FORMALS(out, new_formals);
-    }
-    SET_BODY(out, new_body);
-
-    /* Reapply original attributes */
-    SEXP attr_iter = fn_attrs;
-    while (attr_iter != R_NilValue) {
-        SEXP tag = TAG(attr_iter);
-        SEXP val = CAR(attr_iter);
-        Rf_setAttrib(out, tag, val);
-        attr_iter = CDR(attr_iter);
+    if (fn_attrs != R_NilValue) {
+        SEXP attr_names = Rf_getAttrib(fn_attrs, R_NamesSymbol);
+        R_xlen_t attr_n = Rf_xlength(fn_attrs);
+        for (R_xlen_t i = 0; i < attr_n; i++) {
+            SEXP name = Rf_installChar(STRING_ELT(attr_names, i));
+            Rf_setAttrib(out, name, VECTOR_ELT(fn_attrs, i));
+        }
     }
 
     UNPROTECT(11);

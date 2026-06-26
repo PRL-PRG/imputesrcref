@@ -234,8 +234,7 @@ static SEXP do_strip_transparent_braces(SEXP expr) {
     int n = 0;
     for (SEXP it = expr; it != R_NilValue; it = CDR(it)) n++;
 
-    SEXP out = PROTECT(Rf_allocList(n));
-    SET_TYPEOF(out, LANGSXP);
+    SEXP out = PROTECT(Rf_allocLang(n));
     SEXP src = expr;
     SEXP dst = out;
     while (src != R_NilValue) {

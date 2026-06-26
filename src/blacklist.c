@@ -19,8 +19,9 @@ static SEXP compute_specialsxp_names(void) {
     for (R_xlen_t i = 0; i < n; i++) {
         const char *nm = CHAR(STRING_ELT(nms, i));
         SEXP sym = Rf_install(nm);
-        SEXP obj = Rf_findVarInFrame(R_BaseEnv, sym);
-        if (obj != R_UnboundValue && TYPEOF(obj) == SPECIALSXP) {
+        int err = 0;
+        SEXP obj = R_tryEvalSilent(sym, R_BaseEnv, &err);
+        if (!err && TYPEOF(obj) == SPECIALSXP) {
             keep[i] = 1;
             kept++;
         } else {
