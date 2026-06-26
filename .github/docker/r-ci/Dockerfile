@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gfortran \
     libcurl4-openssl-dev \
     libssl-dev \
+    libuv1-dev \
     libxml2-dev \
   && rm -rf /var/lib/apt/lists/*
 
