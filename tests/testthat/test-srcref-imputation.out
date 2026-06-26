@@ -14,25 +14,23 @@ check path=body/2/4 ok=TRUE sr_text="g()" expr_text="g()"
 
 === loops ===
 idempotent=TRUE
-transparent_checks=10
+transparent_checks=9
 transparent_checks_ok=TRUE
-path=body node={ for (i in { 1:3 }) { if ({ x } || { y }) { a() } else { b() } } while ({ x } & { y }) { c() } repeat { d() } } sr1=(1,16,1,16,16,16,1,1) sr2=(1,18,1,56,18,56,1,1)
+path=body node={ for (i in { 1:3 }) if ({ x } || { y }) { a() } else { b() } while ({ x } & { y }) { c() } repeat { d() } } sr1=(1,16,1,16,16,16,1,1) sr2=(1,18,1,56,18,56,1,1)
 path=body/2/3 node={ 1:3 } sr1=(1,28,1,30,28,30,1,1) sr2=(1,28,1,30,28,30,1,1)
-path=body/2/4 node={ if ({ x } || { y }) { a() } else { b() } } sr1=(1,33,1,56,33,56,1,1) sr2=(1,33,1,56,33,56,1,1)
-path=body/2/4/2/2/2 node={ x } sr1=(1,37,1,37,37,37,1,1) sr2=(1,37,1,37,37,37,1,1)
-path=body/2/4/2/2/3 node={ y } sr1=(1,42,1,42,42,42,1,1) sr2=(1,42,1,42,42,42,1,1)
-path=body/2/4/2/3 node={ a() } sr1=(1,45,1,47,45,47,1,1) sr2=(1,45,1,47,45,47,1,1)
-path=body/2/4/2/4 node={ b() } sr1=(1,54,1,56,54,56,1,1) sr2=(1,54,1,56,54,56,1,1)
+path=body/2/4/2/2 node={ x } sr1=(1,37,1,37,37,37,1,1) sr2=(1,37,1,37,37,37,1,1)
+path=body/2/4/2/3 node={ y } sr1=(1,42,1,42,42,42,1,1) sr2=(1,42,1,42,42,42,1,1)
+path=body/2/4/3 node={ a() } sr1=(1,45,1,47,45,47,1,1) sr2=(1,45,1,47,45,47,1,1)
+path=body/2/4/4 node={ b() } sr1=(1,54,1,56,54,56,1,1) sr2=(1,54,1,56,54,56,1,1)
 path=body/3/2/2 node={ x } sr1=(1,66,1,66,66,66,1,1) sr2=(1,66,1,66,66,66,1,1)
 path=body/3/2/3 node={ y } sr1=(1,70,1,70,70,70,1,1) sr2=(1,70,1,70,70,70,1,1)
 path=body/3/3 node={ c() } sr1=(1,73,1,75,73,75,1,1) sr2=(1,73,1,75,73,75,1,1)
 path=body/4/2 node={ d() } sr1=(1,85,1,87,85,87,1,1) sr2=(1,85,1,87,85,87,1,1)
 check path=body/2/3 ok=TRUE sr_text="1:3" expr_text="1:3"
-check path=body/2/4 ok=TRUE sr_text="if (x || y) a() else b()" expr_text="if (x || y) a() else b()"
-check path=body/2/4/2/2/2 ok=TRUE sr_text="x" expr_text="x"
-check path=body/2/4/2/2/3 ok=TRUE sr_text="y" expr_text="y"
-check path=body/2/4/2/3 ok=TRUE sr_text="a()" expr_text="a()"
-check path=body/2/4/2/4 ok=TRUE sr_text="b()" expr_text="b()"
+check path=body/2/4/2/2 ok=TRUE sr_text="x" expr_text="x"
+check path=body/2/4/2/3 ok=TRUE sr_text="y" expr_text="y"
+check path=body/2/4/3 ok=TRUE sr_text="a()" expr_text="a()"
+check path=body/2/4/4 ok=TRUE sr_text="b()" expr_text="b()"
 check path=body/3/2/2 ok=TRUE sr_text="x" expr_text="x"
 check path=body/3/2/3 ok=TRUE sr_text="y" expr_text="y"
 check path=body/3/3 ok=TRUE sr_text="c()" expr_text="c()"
@@ -52,7 +50,7 @@ check path=body/2/4 ok=TRUE sr_text="g()" expr_text="g()"
 
 === defaults-and-unbraced-body ===
 idempotent=TRUE
-transparent_checks=11
+transparent_checks=10
 transparent_checks_ok=TRUE
 path=formals/a node={ { x } && { y } } sr1=(1,14,1,19,14,19,1,1) sr2=(1,14,1,19,14,19,1,1)
 path=formals/a/2/2 node={ x } sr1=(1,14,1,14,14,14,1,1) sr2=(1,14,1,14,14,14,1,1)
@@ -61,10 +59,9 @@ path=formals/b node={ if ({ p }) { u } else { v } } sr1=(1,26,1,40,26,40,1,1) sr
 path=formals/b/2/2 node={ p } sr1=(1,30,1,30,30,30,1,1) sr2=(1,30,1,30,30,30,1,1)
 path=formals/b/2/3 node={ u } sr1=(1,33,1,33,33,33,1,1) sr2=(1,33,1,33,33,33,1,1)
 path=formals/b/2/4 node={ v } sr1=(1,40,1,40,40,40,1,1) sr2=(1,40,1,40,40,40,1,1)
-path=body node={ if ({ a }) { m() } else { n() } } sr1=(1,43,1,61,43,61,1,1) sr2=(1,43,1,61,43,61,1,1)
-path=body/2/2 node={ a } sr1=(1,47,1,47,47,47,1,1) sr2=(1,47,1,47,47,47,1,1)
-path=body/2/3 node={ m() } sr1=(1,50,1,52,50,52,1,1) sr2=(1,50,1,52,50,52,1,1)
-path=body/2/4 node={ n() } sr1=(1,59,1,61,59,61,1,1) sr2=(1,59,1,61,59,61,1,1)
+path=body/2 node={ a } sr1=(1,47,1,47,47,47,1,1) sr2=(1,47,1,47,47,47,1,1)
+path=body/3 node={ m() } sr1=(1,50,1,52,50,52,1,1) sr2=(1,50,1,52,50,52,1,1)
+path=body/4 node={ n() } sr1=(1,59,1,61,59,61,1,1) sr2=(1,59,1,61,59,61,1,1)
 check path=formals/a ok=TRUE sr_text="x && y" expr_text="x && y"
 check path=formals/a/2/2 ok=TRUE sr_text="x" expr_text="x"
 check path=formals/a/2/3 ok=TRUE sr_text="y" expr_text="y"
@@ -72,10 +69,9 @@ check path=formals/b ok=TRUE sr_text="if (p) u else v" expr_text="if (p) u else 
 check path=formals/b/2/2 ok=TRUE sr_text="p" expr_text="p"
 check path=formals/b/2/3 ok=TRUE sr_text="u" expr_text="u"
 check path=formals/b/2/4 ok=TRUE sr_text="v" expr_text="v"
-check path=body ok=TRUE sr_text="if (a) m() else n()" expr_text="if (a) m() else n()"
-check path=body/2/2 ok=TRUE sr_text="a" expr_text="a"
-check path=body/2/3 ok=TRUE sr_text="m()" expr_text="m()"
-check path=body/2/4 ok=TRUE sr_text="n()" expr_text="n()"
+check path=body/2 ok=TRUE sr_text="a" expr_text="a"
+check path=body/3 ok=TRUE sr_text="m()" expr_text="m()"
+check path=body/4 ok=TRUE sr_text="n()" expr_text="n()"
 
 === already-braced ===
 idempotent=TRUE
@@ -89,123 +85,97 @@ path=body/2/4 node={ g() } sr1=(1,45,1,45,45,45,1,1) sr2=(1,46,1,48,46,48,1,1)
 
 === null-args-preserved ===
 idempotent=TRUE
-transparent_checks=8
+transparent_checks=6
 transparent_checks_ok=TRUE
-path=body node={ f(NULL, { if ({ x }) { y } else { z } }, NULL, { if ({ p }) { q } else { r } }, NULL) } sr1=(1,12,1,12,12,12,1,1) sr2=(1,14,1,66,14,66,1,1)
-path=body/2/3 node={ if ({ x }) { y } else { z } } sr1=(1,22,1,36,22,36,1,1) sr2=(1,22,1,36,22,36,1,1)
-path=body/2/3/2/2 node={ x } sr1=(1,26,1,26,26,26,1,1) sr2=(1,26,1,26,26,26,1,1)
-path=body/2/3/2/3 node={ y } sr1=(1,29,1,29,29,29,1,1) sr2=(1,29,1,29,29,29,1,1)
-path=body/2/3/2/4 node={ z } sr1=(1,36,1,36,36,36,1,1) sr2=(1,36,1,36,36,36,1,1)
-path=body/2/5 node={ if ({ p }) { q } else { r } } sr1=(1,45,1,59,45,59,1,1) sr2=(1,45,1,59,45,59,1,1)
-path=body/2/5/2/2 node={ p } sr1=(1,49,1,49,49,49,1,1) sr2=(1,49,1,49,49,49,1,1)
-path=body/2/5/2/3 node={ q } sr1=(1,52,1,52,52,52,1,1) sr2=(1,52,1,52,52,52,1,1)
-path=body/2/5/2/4 node={ r } sr1=(1,59,1,59,59,59,1,1) sr2=(1,59,1,59,59,59,1,1)
-check path=body/2/3 ok=TRUE sr_text="if (x) y else z" expr_text="if (x) y else z"
-check path=body/2/3/2/2 ok=TRUE sr_text="x" expr_text="x"
-check path=body/2/3/2/3 ok=TRUE sr_text="y" expr_text="y"
-check path=body/2/3/2/4 ok=TRUE sr_text="z" expr_text="z"
-check path=body/2/5 ok=TRUE sr_text="if (p) q else r" expr_text="if (p) q else r"
-check path=body/2/5/2/2 ok=TRUE sr_text="p" expr_text="p"
-check path=body/2/5/2/3 ok=TRUE sr_text="q" expr_text="q"
-check path=body/2/5/2/4 ok=TRUE sr_text="r" expr_text="r"
+path=body node={ f(NULL, if ({ x }) { y } else { z }, NULL, if ({ p }) { q } else { r }, NULL) } sr1=(1,12,1,12,12,12,1,1) sr2=(1,14,1,66,14,66,1,1)
+path=body/2/3/2 node={ x } sr1=(1,26,1,26,26,26,1,1) sr2=(1,26,1,26,26,26,1,1)
+path=body/2/3/3 node={ y } sr1=(1,29,1,29,29,29,1,1) sr2=(1,29,1,29,29,29,1,1)
+path=body/2/3/4 node={ z } sr1=(1,36,1,36,36,36,1,1) sr2=(1,36,1,36,36,36,1,1)
+path=body/2/5/2 node={ p } sr1=(1,49,1,49,49,49,1,1) sr2=(1,49,1,49,49,49,1,1)
+path=body/2/5/3 node={ q } sr1=(1,52,1,52,52,52,1,1) sr2=(1,52,1,52,52,52,1,1)
+path=body/2/5/4 node={ r } sr1=(1,59,1,59,59,59,1,1) sr2=(1,59,1,59,59,59,1,1)
+check path=body/2/3/2 ok=TRUE sr_text="x" expr_text="x"
+check path=body/2/3/3 ok=TRUE sr_text="y" expr_text="y"
+check path=body/2/3/4 ok=TRUE sr_text="z" expr_text="z"
+check path=body/2/5/2 ok=TRUE sr_text="p" expr_text="p"
+check path=body/2/5/3 ok=TRUE sr_text="q" expr_text="q"
+check path=body/2/5/4 ok=TRUE sr_text="r" expr_text="r"
 
 === generic-call-args ===
 idempotent=TRUE
-transparent_checks=4
+transparent_checks=3
 transparent_checks_ok=TRUE
-path=body node={ g({ x + 1 }, { f({ y + 1 }) }) } sr1=(1,16,1,29,16,29,1,1) sr2=(1,16,1,29,16,29,1,1)
-path=body/2/2 node={ x + 1 } sr1=(1,18,1,20,18,20,1,1) sr2=(1,18,1,20,18,20,1,1)
-path=body/2/3 node={ f({ y + 1 }) } sr1=(1,23,1,28,23,28,1,1) sr2=(1,23,1,28,23,28,1,1)
-path=body/2/3/2/2 node={ y + 1 } sr1=(1,25,1,27,25,27,1,1) sr2=(1,25,1,27,25,27,1,1)
-check path=body ok=TRUE sr_text="g(x + 1, f(y + 1))" expr_text="g(x + 1, f(y + 1))"
-check path=body/2/2 ok=TRUE sr_text="x + 1" expr_text="x + 1"
-check path=body/2/3 ok=TRUE sr_text="f(y + 1)" expr_text="f(y + 1)"
-check path=body/2/3/2/2 ok=TRUE sr_text="y + 1" expr_text="y + 1"
+path=body/2 node={ x + 1 } sr1=(1,18,1,20,18,20,1,1) sr2=(1,18,1,20,18,20,1,1)
+path=body/3 node={ f({ y + 1 }) } sr1=(1,23,1,28,23,28,1,1) sr2=(1,23,1,28,23,28,1,1)
+path=body/3/2/2 node={ y + 1 } sr1=(1,25,1,27,25,27,1,1) sr2=(1,25,1,27,25,27,1,1)
+check path=body/2 ok=TRUE sr_text="x + 1" expr_text="x + 1"
+check path=body/3 ok=TRUE sr_text="f(y + 1)" expr_text="f(y + 1)"
+check path=body/3/2/2 ok=TRUE sr_text="y + 1" expr_text="y + 1"
 
 === missing-call-arg ===
 idempotent=TRUE
-transparent_checks=1
+transparent_checks=0
 transparent_checks_ok=TRUE
-path=body node={ quote(expr = ) } sr1=(1,12,1,25,12,25,1,1) sr2=(1,12,1,25,12,25,1,1)
-check path=body ok=TRUE sr_text="quote(expr = )" expr_text="quote(expr = )"
 
 === source-file ===
 count=2
 functions=f1,f2
 f1_parse_rows=65
 f2_parse_rows=65
-f1_transparent_checks=5
-f2_transparent_checks=6
+f1_transparent_checks=4
+f2_transparent_checks=5
 f1_transparent_ok=TRUE
 f2_transparent_ok=TRUE
-path=body node={ if ({ x } && { y }) { f() } else { g() } } sr1=(1,22,1,45,22,45,1,1) sr2=(1,22,1,45,22,45,1,1)
-path=body/2/2/2 node={ x } sr1=(1,26,1,26,26,26,1,1) sr2=(1,26,1,26,26,26,1,1)
-path=body/2/2/3 node={ y } sr1=(1,31,1,31,31,31,1,1) sr2=(1,31,1,31,31,31,1,1)
-path=body/2/3 node={ f() } sr1=(1,34,1,36,34,36,1,1) sr2=(1,34,1,36,34,36,1,1)
-path=body/2/4 node={ g() } sr1=(1,43,1,45,43,45,1,1) sr2=(1,43,1,45,43,45,1,1)
-check path=body ok=TRUE sr_text="if (x && y) f() else g()" expr_text="if (x && y) f() else g()"
-check path=body/2/2/2 ok=TRUE sr_text="x" expr_text="x"
-check path=body/2/2/3 ok=TRUE sr_text="y" expr_text="y"
-check path=body/2/3 ok=TRUE sr_text="f()" expr_text="f()"
-check path=body/2/4 ok=TRUE sr_text="g()" expr_text="g()"
+path=body/2/2 node={ x } sr1=(1,26,1,26,26,26,1,1) sr2=(1,26,1,26,26,26,1,1)
+path=body/2/3 node={ y } sr1=(1,31,1,31,31,31,1,1) sr2=(1,31,1,31,31,31,1,1)
+path=body/3 node={ f() } sr1=(1,34,1,36,34,36,1,1) sr2=(1,34,1,36,34,36,1,1)
+path=body/4 node={ g() } sr1=(1,43,1,45,43,45,1,1) sr2=(1,43,1,45,43,45,1,1)
+check path=body/2/2 ok=TRUE sr_text="x" expr_text="x"
+check path=body/2/3 ok=TRUE sr_text="y" expr_text="y"
+check path=body/3 ok=TRUE sr_text="f()" expr_text="f()"
+check path=body/4 ok=TRUE sr_text="g()" expr_text="g()"
 path=formals/a node={ { p } || { q } } sr1=(2,20,2,25,20,25,2,2) sr2=(2,20,2,25,20,25,2,2)
 path=formals/a/2/2 node={ p } sr1=(2,20,2,20,20,20,2,2) sr2=(2,20,2,20,20,20,2,2)
 path=formals/a/2/3 node={ q } sr1=(2,25,2,25,25,25,2,2) sr2=(2,25,2,25,25,25,2,2)
-path=body node={ while ({ a }) { h() } } sr1=(2,28,2,40,28,40,2,2) sr2=(2,28,2,40,28,40,2,2)
-path=body/2/2 node={ a } sr1=(2,35,2,35,35,35,2,2) sr2=(2,35,2,35,35,35,2,2)
-path=body/2/3 node={ h() } sr1=(2,38,2,40,38,40,2,2) sr2=(2,38,2,40,38,40,2,2)
+path=body/2 node={ a } sr1=(2,35,2,35,35,35,2,2) sr2=(2,35,2,35,35,35,2,2)
+path=body/3 node={ h() } sr1=(2,38,2,40,38,40,2,2) sr2=(2,38,2,40,38,40,2,2)
 check path=formals/a ok=TRUE sr_text="p || q" expr_text="p || q"
 check path=formals/a/2/2 ok=TRUE sr_text="p" expr_text="p"
 check path=formals/a/2/3 ok=TRUE sr_text="q" expr_text="q"
-check path=body ok=TRUE sr_text="while (a) h()" expr_text="while (a) h()"
-check path=body/2/2 ok=TRUE sr_text="a" expr_text="a"
-check path=body/2/3 ok=TRUE sr_text="h()" expr_text="h()"
+check path=body/2 ok=TRUE sr_text="a" expr_text="a"
+check path=body/3 ok=TRUE sr_text="h()" expr_text="h()"
 
 === package-like-srcref ===
 sr_slots_1_3=100-100
 sr_slots_7_8=3-3
-transparent_checks=5
+transparent_checks=4
 transparent_checks_ok=TRUE
-path=body node={ if ({ x } && { y }) { f() } else { g() } } sr1=(3,21,3,44,21,44,3,3) sr2=(3,21,3,44,21,44,3,3)
-path=body/2/2/2 node={ x } sr1=(3,25,3,25,25,25,3,3) sr2=(3,25,3,25,25,25,3,3)
-path=body/2/2/3 node={ y } sr1=(3,30,3,30,30,30,3,3) sr2=(3,30,3,30,30,30,3,3)
-path=body/2/3 node={ f() } sr1=(3,33,3,35,33,35,3,3) sr2=(3,33,3,35,33,35,3,3)
-path=body/2/4 node={ g() } sr1=(3,42,3,44,42,44,3,3) sr2=(3,42,3,44,42,44,3,3)
-check path=body ok=TRUE sr_text="if (x && y) f() else g()" expr_text="if (x && y) f() else g()"
-check path=body/2/2/2 ok=TRUE sr_text="x" expr_text="x"
-check path=body/2/2/3 ok=TRUE sr_text="y" expr_text="y"
-check path=body/2/3 ok=TRUE sr_text="f()" expr_text="f()"
-check path=body/2/4 ok=TRUE sr_text="g()" expr_text="g()"
+path=body/2/2 node={ x } sr1=(3,25,3,25,25,25,3,3) sr2=(3,25,3,25,25,25,3,3)
+path=body/2/3 node={ y } sr1=(3,30,3,30,30,30,3,3) sr2=(3,30,3,30,30,30,3,3)
+path=body/3 node={ f() } sr1=(3,33,3,35,33,35,3,3) sr2=(3,33,3,35,33,35,3,3)
+path=body/4 node={ g() } sr1=(3,42,3,44,42,44,3,3) sr2=(3,42,3,44,42,44,3,3)
+check path=body/2/2 ok=TRUE sr_text="x" expr_text="x"
+check path=body/2/3 ok=TRUE sr_text="y" expr_text="y"
+check path=body/3 ok=TRUE sr_text="f()" expr_text="f()"
+check path=body/4 ok=TRUE sr_text="g()" expr_text="g()"
 
 === zero-formals ===
 formals_is_null=TRUE
 idempotent=TRUE
-transparent_checks=4
+transparent_checks=3
 transparent_checks_ok=TRUE
-path=body node={ if ({ TRUE }) { f() } else { g() } } sr1=(1,12,1,33,12,33,1,1) sr2=(1,12,1,33,12,33,1,1)
-path=body/2/2 node={ TRUE } sr1=(1,16,1,19,16,19,1,1) sr2=(1,16,1,19,16,19,1,1)
-path=body/2/3 node={ f() } sr1=(1,22,1,24,22,24,1,1) sr2=(1,22,1,24,22,24,1,1)
-path=body/2/4 node={ g() } sr1=(1,31,1,33,31,33,1,1) sr2=(1,31,1,33,31,33,1,1)
-check path=body ok=TRUE sr_text="if (TRUE) f() else g()" expr_text="if (TRUE) f() else g()"
-check path=body/2/2 ok=TRUE sr_text="TRUE" expr_text="TRUE"
-check path=body/2/3 ok=TRUE sr_text="f()" expr_text="f()"
-check path=body/2/4 ok=TRUE sr_text="g()" expr_text="g()"
+path=body/2 node={ TRUE } sr1=(1,16,1,19,16,19,1,1) sr2=(1,16,1,19,16,19,1,1)
+path=body/3 node={ f() } sr1=(1,22,1,24,22,24,1,1) sr2=(1,22,1,24,22,24,1,1)
+path=body/4 node={ g() } sr1=(1,31,1,33,31,33,1,1) sr2=(1,31,1,33,31,33,1,1)
+check path=body/2 ok=TRUE sr_text="TRUE" expr_text="TRUE"
+check path=body/3 ok=TRUE sr_text="f()" expr_text="f()"
+check path=body/4 ok=TRUE sr_text="g()" expr_text="g()"
 
 === package-base ===
 patched_count=0
 
 === no-srcref-fallback ===
-default_blocked=TRUE
-fallback_checks=5
+default_blocked=FALSE
+fallback_checks=0
 fallback_ok=TRUE
-path=body node={ if ({ x } && { y }) { f() } else { g() } } sr1=(2,1,2,24,1,24,2,2) sr2=(2,1,2,24,1,24,2,2)
-path=body/2/2/2 node={ x } sr1=(2,5,2,5,5,5,2,2) sr2=(2,5,2,5,5,5,2,2)
-path=body/2/2/3 node={ y } sr1=(2,10,2,10,10,10,2,2) sr2=(2,10,2,10,10,10,2,2)
-path=body/2/3 node={ f() } sr1=(2,13,2,15,13,15,2,2) sr2=(2,13,2,15,13,15,2,2)
-path=body/2/4 node={ g() } sr1=(2,22,2,24,22,24,2,2) sr2=(2,22,2,24,22,24,2,2)
-check path=body ok=TRUE sr_text="if (x && y) f() else g()" expr_text="if (x && y) f() else g()"
-check path=body/2/2/2 ok=TRUE sr_text="x" expr_text="x"
-check path=body/2/2/3 ok=TRUE sr_text="y" expr_text="y"
-check path=body/2/3 ok=TRUE sr_text="f()" expr_text="f()"
-check path=body/2/4 ok=TRUE sr_text="g()" expr_text="g()"
 
