@@ -150,10 +150,10 @@ sr_slots_1_3=100-100
 sr_slots_7_8=3-3
 transparent_checks=4
 transparent_checks_ok=TRUE
-path=body/2/2 node={ x } sr1=(3,25,3,25,25,25,3,3) sr2=(3,25,3,25,25,25,3,3)
-path=body/2/3 node={ y } sr1=(3,30,3,30,30,30,3,3) sr2=(3,30,3,30,30,30,3,3)
-path=body/3 node={ f() } sr1=(3,33,3,35,33,35,3,3) sr2=(3,33,3,35,33,35,3,3)
-path=body/4 node={ g() } sr1=(3,42,3,44,42,44,3,3) sr2=(3,42,3,44,42,44,3,3)
+path=body/2/2 node={ x } sr1=(100,25,100,25,25,25,3,3) sr2=(100,25,100,25,25,25,3,3)
+path=body/2/3 node={ y } sr1=(100,30,100,30,30,30,3,3) sr2=(100,30,100,30,30,30,3,3)
+path=body/3 node={ f() } sr1=(100,33,100,35,33,35,3,3) sr2=(100,33,100,35,33,35,3,3)
+path=body/4 node={ g() } sr1=(100,42,100,44,42,44,3,3) sr2=(100,42,100,44,42,44,3,3)
 check path=body/2/2 ok=TRUE sr_text="x" expr_text="x"
 check path=body/2/3 ok=TRUE sr_text="y" expr_text="y"
 check path=body/3 ok=TRUE sr_text="f()" expr_text="f()"
