@@ -577,6 +577,7 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
     SEXP srcfile = VECTOR_ELT(src, 1);
     int line_offset = INTEGER(VECTOR_ELT(src, 2))[0];
     int first_col_offset = INTEGER(VECTOR_ELT(src, 3))[0];
+    int display_delta = INTEGER(VECTOR_ELT(src, 5))[0];
 
     const char *txt = CHAR(STRING_ELT(text_sxp, 0));
     SEXP parsed = PROTECT(call_parse(txt));
@@ -652,6 +653,7 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
 
     parse_ctx ctx;
     imputesrcref_build_ctx(&ctx, pd, srcfile, line_offset, first_col_offset, blacklist, wrap_call_args);
+    ctx.display_delta = display_delta;
 
     /* Source lines for visual->byte column conversion in node_srcref. Absolute
        line k maps to lines[k - (line_offset + 1)]. */

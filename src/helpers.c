@@ -123,6 +123,7 @@ void imputesrcref_build_ctx(parse_ctx *ctx, SEXP pd, SEXP srcfile,
     ctx->pd = pd;
     ctx->srcfile = srcfile;
     ctx->line_offset = line_offset;
+    ctx->display_delta = 0;
     ctx->first_col_offset = first_col_offset;
     ctx->abs_lines = R_NilValue;
     ctx->n_abs_lines = 0;
@@ -251,9 +252,18 @@ SEXP imputesrcref_node_srcref(int node_id, parse_ctx *ctx) {
         }
     }
 
+    /* Slots: [first_line, first_byte, last_line, last_byte, first_col,
+       last_col, first_parsed, last_parsed]. covr and other consumers read the
+       first_line and last_line slots for display, so emit those in the
+       original-file (logical) coordinate via display_delta. The byte/column
+       computation above and the parsed slots stay in the physical coordinate
+       the source was read in, so re-reading source from this srcref still
+       works. With no line directives, display_delta is 0. */
+    int dl1 = l1 + ctx->display_delta;
+    int dl2 = l2 + ctx->display_delta;
     SEXP sr = PROTECT(Rf_allocVector(INTSXP, 8));
     int *p = INTEGER(sr);
-    p[0] = l1; p[1] = b1; p[2] = l2; p[3] = b2;
+    p[0] = dl1; p[1] = b1; p[2] = dl2; p[3] = b2;
     p[4] = c1; p[5] = c2; p[6] = l1; p[7] = l2;
     Rf_setAttrib(sr, Rf_install("srcfile"), ctx->srcfile);
     SEXP cls = PROTECT(Rf_mkString("srcref"));
