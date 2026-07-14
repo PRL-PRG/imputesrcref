@@ -5,6 +5,10 @@ src/*.dll
 src/*.dylib
 src/symbols.rds
 
+# Coverage / profile-guided-optimization artifacts
+src/*.gcda
+src/*.gcno
+
 # R CMD build / check artifacts
 *.tar.gz
 *.Rcheck/

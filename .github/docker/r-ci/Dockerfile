@@ -1,4 +1,5 @@
-FROM rocker/r-ver:4.5.2
+ARG R_VERSION=4.5.2
+FROM rocker/r-ver:${R_VERSION}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
