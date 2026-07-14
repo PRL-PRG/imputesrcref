@@ -4,7 +4,20 @@
 #define R_NO_REMAP
 #include <R.h>
 #include <Rinternals.h>
+#include <Rversion.h>
 #include <R_ext/Rdynload.h>
+
+/* R 4.6 removed several long-standing entry points (SET_TYPEOF, SET_BODY,
+   SET_FORMALS, BODY, ATTRIB, Rf_findVarInFrame, ...) from the public C API.
+   On R < 4.6 we keep using the fast in-place mutators; on R >= 4.6 we fall
+   back to the public allocating replacements (Rf_allocLang, R_mkClosure,
+   R_ClosureBody/Formals/Env, attributes(), R_tryEvalSilent). Guard every such
+   site with IMPUTESRCREF_R_GE_4_6 so a single build works on both. */
+#if defined(R_VERSION) && R_VERSION >= R_Version(4, 6, 0)
+#  define IMPUTESRCREF_R_GE_4_6 1
+#else
+#  define IMPUTESRCREF_R_GE_4_6 0
+#endif
 
 typedef struct parse_ctx {
     SEXP pd;

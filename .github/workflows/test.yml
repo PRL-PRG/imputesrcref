@@ -12,13 +12,30 @@ permissions:
   packages: read
 
 jobs:
+  # Resolve the (lowercased) GHCR image repo once so both the matrixed build
+  # and test jobs can reference a deterministic, per-R-version image name in
+  # expression contexts (container.image / tags) without a bash lowercasing step.
+  vars:
+    runs-on: ubuntu-latest
+    outputs:
+      image_repo: ${{ steps.v.outputs.image_repo }}
+    steps:
+      - id: v
+        run: |
+          owner_lc="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "image_repo=ghcr.io/${owner_lc}/impuresrcref-r-ci" >> "$GITHUB_OUTPUT"
+
   build_image:
+    needs: vars
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    outputs:
-      image: ${{ steps.image.outputs.image }}
+    strategy:
+      matrix:
+        # R 4.5 exercises the in-place (SET_TYPEOF/SET_BODY/...) code path;
+        # R 4.6 exercises the public-API (Rf_allocLang/R_mkClosure/...) path.
+        r_version: ["4.5.2", "4.6.1"]
     steps:
       - uses: actions/checkout@v4
 
@@ -30,29 +47,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - id: image
-        run: |
-          owner_lc="${GITHUB_REPOSITORY_OWNER,,}"
-          image_repo="ghcr.io/${owner_lc}/impuresrcref-r-ci"
-          echo "image=${image_repo}:sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-          echo "image_repo=${image_repo}" >> "$GITHUB_OUTPUT"
-
       - uses: docker/build-push-action@v6
         with:
           context: .github/docker/r-ci
           file: .github/docker/r-ci/Dockerfile
+          build-args: |
+            R_VERSION=${{ matrix.r_version }}
           push: true
           tags: |
-            ${{ steps.image.outputs.image }}
-            ${{ steps.image.outputs.image_repo }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ needs.vars.outputs.image_repo }}:sha-${{ github.sha }}-r${{ matrix.r_version }}
+            ${{ needs.vars.outputs.image_repo }}:latest-r${{ matrix.r_version }}
+          cache-from: type=gha,scope=r${{ matrix.r_version }}
+          cache-to: type=gha,mode=max,scope=r${{ matrix.r_version }}
 
   test:
-    needs: build_image
+    needs: [vars, build_image]
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        r_version: ["4.5.2", "4.6.1"]
     container:
-      image: ${{ needs.build_image.outputs.image }}
+      image: ${{ needs.vars.outputs.image_repo }}:sha-${{ github.sha }}-r${{ matrix.r_version }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
