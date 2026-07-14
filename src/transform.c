@@ -544,12 +544,57 @@ static SEXP call_body(SEXP fn) {
     return res;
 }
 
-static SEXP call_attributes(SEXP x) {
-    SEXP f = PROTECT(Rf_findFun(Rf_install("attributes"), R_BaseEnv));
-    SEXP call = PROTECT(Rf_lang2(f, x));
-    SEXP res = Rf_eval(call, R_GlobalEnv);
+/* Recover a srcref via R's getSrcref() for functions whose `srcref` attribute
+   was stripped (notably lazy-loaded objects). Returns R_NilValue if none. */
+static SEXP call_getSrcref(SEXP fn) {
+    SEXP f = PROTECT(Rf_findFun(Rf_install("getSrcref"), R_GlobalEnv));
+    SEXP call = PROTECT(Rf_lang2(f, fn));
+    int err = 0;
+    SEXP res = R_tryEvalSilent(call, R_GlobalEnv, &err);
     UNPROTECT(2);
+    if (err || res == NULL || res == R_NilValue) return R_NilValue;
     return res;
+}
+
+/* Walk an expression tree IN PLACE and impute every nested closure that carries
+   (or can recover) its own srcref. Used for functions with no top-level srcref —
+   e.g. lazy-loaded S4 methods whose body is the methods-package wrapper
+   `{ .local <- function(<sig>) <body>; .local(...) }`: the wrapper has no source,
+   but the inner `.local` closure retains its srcref and must be instrumented.
+   Mirrors covr's AST tracer, which recurses into such bodies. `*any` is set when
+   at least one closure is imputed. The tree must be a private copy (the caller
+   duplicates it) since closures are replaced via SETCAR. */
+static void impute_nested_inplace(SEXP e, SEXP wrap_sxp, SEXP quiet_sxp, int *any) {
+    static SEXP srcref_sym = NULL;
+    if (srcref_sym == NULL) srcref_sym = Rf_install("srcref");
+    if (e == R_NilValue) return;
+    int t = TYPEOF(e);
+    if (t != LANGSXP && t != LISTSXP) return;
+    for (SEXP p = e; p != R_NilValue && (TYPEOF(p) == LANGSXP || TYPEOF(p) == LISTSXP);
+         p = CDR(p)) {
+        SEXP child = CAR(p);
+        if (TYPEOF(child) == CLOSXP) {
+            SEXP sr = Rf_getAttrib(child, srcref_sym);
+            if (sr != R_NilValue) {
+                SEXP imp = C_impute_srcrefs(child, wrap_sxp, quiet_sxp);
+                SETCAR(p, imp);
+                *any = 1;
+            } else {
+                SEXP rec = PROTECT(call_getSrcref(child));
+                if (rec != R_NilValue) {
+                    SEXP c2 = PROTECT(Rf_duplicate(child));
+                    Rf_setAttrib(c2, srcref_sym, rec);
+                    SEXP imp = C_impute_srcrefs(c2, wrap_sxp, quiet_sxp);
+                    SETCAR(p, imp);
+                    *any = 1;
+                    UNPROTECT(1); /* c2 */
+                }
+                UNPROTECT(1); /* rec */
+            }
+        } else {
+            impute_nested_inplace(child, wrap_sxp, quiet_sxp, any);
+        }
+    }
 }
 
 SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
@@ -567,22 +612,50 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
     int wrap_call_args = LOGICAL(wrap_call_args_sxp)[0];
     int quiet = LOGICAL(quiet_sxp)[0];
 
+    SEXP fn_attrs = PROTECT(Rf_duplicate(ATTRIB(fn)));
+
     /* `quiet` only suppresses the "no srcref" message emitted by
        source_text. OR with the ambient flag so a `quiet = TRUE` call inside an
        already-quiet batch op never un-quiets it; restore immediately after. */
+    /* Probe for source quietly: if there's no top-level srcref we may still be
+       able to impute nested closures, in which case the "no srcref" message
+       would be misleading. We re-surface it below only when nothing is imputed. */
     int saved_quiet = imputesrcref_quiet;
-    if (quiet) imputesrcref_quiet = 1;
+    imputesrcref_quiet = 1;
     SEXP src = PROTECT(imputesrcref_source_text(fn));
     imputesrcref_quiet = saved_quiet;
     if (src == R_NilValue) {
-        UNPROTECT(1);
-        return fn;
+        /* No top-level srcref. Instead of giving up, recurse into the body and
+           impute nested closures that carry their own srcref (the S4 `.local`
+           wrapper case). If none are found, return the function unchanged. */
+        int imputed_any = 0;
+        SEXP body_copy = PROTECT(Rf_duplicate(BODY(fn)));
+        impute_nested_inplace(body_copy, wrap_call_args_sxp, quiet_sxp, &imputed_any);
+        if (!imputed_any) {
+            UNPROTECT(3); /* body_copy, src, fn_attrs */
+            /* Truly nothing to impute: surface the original informational
+               message (honouring the caller's quiet / ambient quiet flags). */
+            if (!quiet && !saved_quiet) {
+                int sq = imputesrcref_quiet;
+                imputesrcref_quiet = 0;
+                imputesrcref_source_text(fn);
+                imputesrcref_quiet = sq;
+            }
+            return fn;
+        }
+        /* Rf_duplicate preserves formals, environment, attributes and the S4
+           object bit; only the body changes. */
+        SEXP out = PROTECT(Rf_duplicate(fn));
+        SET_BODY(out, body_copy);
+        UNPROTECT(4); /* out, body_copy, src, fn_attrs */
+        return out;
     }
 
     SEXP text_sxp = VECTOR_ELT(src, 0);
     SEXP srcfile = VECTOR_ELT(src, 1);
     int line_offset = INTEGER(VECTOR_ELT(src, 2))[0];
     int first_col_offset = INTEGER(VECTOR_ELT(src, 3))[0];
+    int display_delta = INTEGER(VECTOR_ELT(src, 5))[0];
 
     const char *txt = CHAR(STRING_ELT(text_sxp, 0));
     SEXP parsed = PROTECT(call_parse(txt));
@@ -658,6 +731,7 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
 
     parse_ctx ctx;
     imputesrcref_build_ctx(&ctx, pd, srcfile, line_offset, first_col_offset, blacklist, wrap_call_args);
+    ctx.display_delta = display_delta;
 
     /* Source lines for visual->byte column conversion in node_srcref. Absolute
        line k maps to lines[k - (line_offset + 1)]. */
@@ -672,26 +746,31 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
     SEXP fmls = PROTECT(call_formals(fn));
     SEXP bdy = PROTECT(call_body(fn));
     SEXP fnsym = PROTECT(Rf_install("function"));
-    SEXP fn_expr = PROTECT(Rf_allocLang(3));
+    SEXP fn_expr = PROTECT(Rf_allocList(3));
+    SET_TYPEOF(fn_expr, LANGSXP);
     SETCAR(fn_expr, fnsym);
     SETCAR(CDR(fn_expr), fmls);
     SETCAR(CDDR(fn_expr), bdy);
 
     SEXP transformed = PROTECT(imputesrcref_transform_expr(fn_expr, root_id, &ctx));
 
-    /* Apply to fn by constructing a closure with the original environment. */
+    /* Apply to fn: out <- fn; formals(out) <- transformed[[2]]; body(out) <- transformed[[3]] */
+    SEXP out = PROTECT(Rf_duplicate(fn));
     SEXP new_formals = CADR(transformed);
     SEXP new_body = CADDR(transformed);
-    SEXP fn_attrs = PROTECT(call_attributes(fn));
-    SEXP out = PROTECT(R_mkClosure(new_formals, new_body, R_ClosureEnv(fn)));
 
-    if (fn_attrs != R_NilValue) {
-        SEXP attr_names = Rf_getAttrib(fn_attrs, R_NamesSymbol);
-        R_xlen_t attr_n = Rf_xlength(fn_attrs);
-        for (R_xlen_t i = 0; i < attr_n; i++) {
-            SEXP name = Rf_installChar(STRING_ELT(attr_names, i));
-            Rf_setAttrib(out, name, VECTOR_ELT(fn_attrs, i));
-        }
+    if (new_formals != R_NilValue) {
+        SET_FORMALS(out, new_formals);
+    }
+    SET_BODY(out, new_body);
+
+    /* Reapply original attributes */
+    SEXP attr_iter = fn_attrs;
+    while (attr_iter != R_NilValue) {
+        SEXP tag = TAG(attr_iter);
+        SEXP val = CAR(attr_iter);
+        Rf_setAttrib(out, tag, val);
+        attr_iter = CDR(attr_iter);
     }
 
     UNPROTECT(11);

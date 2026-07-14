@@ -26,6 +26,12 @@ typedef struct parse_ctx {
     int *expr_children_data;
     SEXP srcfile;
     int line_offset;
+    /* Added to the emitted srcref's first_line/last_line slots so they land in
+       the original-file (logical, #line-directive-adjusted) coordinate system,
+       even when source is read using the parsed/physical line numbers. Equals
+       original_srcref_first_line - chosen_(physical_)start_line; 0 when the two
+       coordinate systems coincide (no #line directives / deparse fallback). */
+    int display_delta;
     int first_col_offset;
     /* Untrimmed source lines spanned by the function, used to convert the
        parse data's visual (tab-expanded) columns into byte offsets for the

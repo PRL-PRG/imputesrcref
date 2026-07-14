@@ -107,13 +107,14 @@ SEXP imputesrcref_source_text(SEXP fn) {
         const char *txt = CHAR(STRING_ELT(collapsed, 0));
         SEXP srcfile = PROTECT(call_srcfilecopy("<deparse>", txt));
 
-        SEXP out = PROTECT(Rf_allocVector(VECSXP, 5));
-        SEXP nms = PROTECT(Rf_allocVector(STRSXP, 5));
+        SEXP out = PROTECT(Rf_allocVector(VECSXP, 6));
+        SEXP nms = PROTECT(Rf_allocVector(STRSXP, 6));
         SET_STRING_ELT(nms, 0, Rf_mkChar("text"));
         SET_STRING_ELT(nms, 1, Rf_mkChar("srcfile"));
         SET_STRING_ELT(nms, 2, Rf_mkChar("line_offset"));
         SET_STRING_ELT(nms, 3, Rf_mkChar("first_col_offset"));
         SET_STRING_ELT(nms, 4, Rf_mkChar("lines"));
+        SET_STRING_ELT(nms, 5, Rf_mkChar("display_delta"));
         Rf_setAttrib(out, R_NamesSymbol, nms);
         SET_VECTOR_ELT(out, 0, collapsed);
         SET_VECTOR_ELT(out, 1, srcfile);
@@ -122,6 +123,8 @@ SEXP imputesrcref_source_text(SEXP fn) {
         /* Deparsed source lines: line_offset is 0, so absolute line k maps to
            dep[k-1]. */
         SET_VECTOR_ELT(out, 4, dep);
+        /* Deparsed coordinates: physical == logical, no shift. */
+        SET_VECTOR_ELT(out, 5, Rf_ScalarInteger(0));
         UNPROTECT(5);
         return out;
     }
@@ -137,6 +140,9 @@ SEXP imputesrcref_source_text(SEXP fn) {
 
     int *p = INTEGER(sr);
     int n = (int) Rf_xlength(sr);
+    /* first_line is always the logical (#line-adjusted) line that covr displays;
+       captured before UNPROTECT so we can map imputed srcrefs back to it. */
+    int orig_first_line = (n >= 1) ? p[0] : NA_INTEGER;
     int candidates[3][4];
     int ncand = 0;
     if (n >= 8) {
@@ -222,13 +228,20 @@ SEXP imputesrcref_source_text(SEXP fn) {
 
     SEXP collapsed = PROTECT(paste_lines(new_lines));
 
-    SEXP out = PROTECT(Rf_allocVector(VECSXP, 5));
-    SEXP nms = PROTECT(Rf_allocVector(STRSXP, 5));
+    /* Offset from the (physical) line the source was read at to the logical
+       first_line covr displays. Nonzero only when #line directives make the two
+       diverge (e.g. covr's installed/collated package source). */
+    int display_delta = (orig_first_line != NA_INTEGER)
+        ? orig_first_line - chosen_start_line : 0;
+
+    SEXP out = PROTECT(Rf_allocVector(VECSXP, 6));
+    SEXP nms = PROTECT(Rf_allocVector(STRSXP, 6));
     SET_STRING_ELT(nms, 0, Rf_mkChar("text"));
     SET_STRING_ELT(nms, 1, Rf_mkChar("srcfile"));
     SET_STRING_ELT(nms, 2, Rf_mkChar("line_offset"));
     SET_STRING_ELT(nms, 3, Rf_mkChar("first_col_offset"));
     SET_STRING_ELT(nms, 4, Rf_mkChar("lines"));
+    SET_STRING_ELT(nms, 5, Rf_mkChar("display_delta"));
     Rf_setAttrib(out, R_NamesSymbol, nms);
     SET_VECTOR_ELT(out, 0, collapsed);
     SET_VECTOR_ELT(out, 1, srcfile);
@@ -238,6 +251,7 @@ SEXP imputesrcref_source_text(SEXP fn) {
        convert visual columns to byte offsets. Absolute line k maps to
        lines[k - chosen_start_line]. */
     SET_VECTOR_ELT(out, 4, lines);
+    SET_VECTOR_ELT(out, 5, Rf_ScalarInteger(display_delta));
 
     UNPROTECT(5);
     return out;

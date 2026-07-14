@@ -94,7 +94,13 @@ static SEXP do_srcref_to_text(SEXP sr) {
     if (srcfile == R_NilValue) return Rf_ScalarString(NA_STRING);
 
     int *p = INTEGER(sr);
-    int sl = p[0], sc = p[1], el = p[2], ec = p[3];
+    /* Extract source via the parsed (physical) line slots, matching how R's
+       own as.character.srcref / getSrcref read source. first_line/last_line
+       (slots 0/2) carry the logical (#line-adjusted) display coordinate and do
+       not index the physical srcfile. Byte slots 1/3 are within-line offsets. */
+    int sc = p[1], ec = p[3];
+    int sl = (Rf_xlength(sr) >= 8) ? p[6] : p[0];
+    int el = (Rf_xlength(sr) >= 8) ? p[7] : p[2];
 
     SEXP gsl_fn = PROTECT(base_fn("getSrcLines"));
     SEXP a = PROTECT(Rf_ScalarInteger(sl));
@@ -234,7 +240,8 @@ static SEXP do_strip_transparent_braces(SEXP expr) {
     int n = 0;
     for (SEXP it = expr; it != R_NilValue; it = CDR(it)) n++;
 
-    SEXP out = PROTECT(Rf_allocLang(n));
+    SEXP out = PROTECT(Rf_allocList(n));
+    SET_TYPEOF(out, LANGSXP);
     SEXP src = expr;
     SEXP dst = out;
     while (src != R_NilValue) {
