@@ -597,6 +597,35 @@ static void impute_nested_inplace(SEXP e, SEXP wrap_sxp, SEXP quiet_sxp, int *an
     }
 }
 
+#if IMPUTESRCREF_R_GE_4_6
+/* R >= 4.6: ATTRIB/BODY/SET_BODY/SET_FORMALS are non-API, so instead of
+   duplicating a closure and mutating it in place we rebuild it with the public
+   R_mkClosure() and copy attributes over via R-level attributes(). */
+static SEXP call_attributes(SEXP x) {
+    SEXP f = PROTECT(Rf_findFun(Rf_install("attributes"), R_BaseEnv));
+    SEXP call = PROTECT(Rf_lang2(f, x));
+    SEXP res = Rf_eval(call, R_GlobalEnv);
+    UNPROTECT(2);
+    return res;
+}
+
+/* Copy every attribute of the named list `attrs` (as returned by
+   call_attributes) onto `out`, and restore the S4 object bit from `src`.
+   R_mkClosure produces a bare closure, so this reinstates srcref, class,
+   S4 slots, etc. */
+static void reapply_attributes(SEXP out, SEXP attrs, SEXP src) {
+    if (attrs != R_NilValue) {
+        SEXP names = Rf_getAttrib(attrs, R_NamesSymbol);
+        R_xlen_t n = Rf_xlength(attrs);
+        for (R_xlen_t i = 0; i < n; i++) {
+            SEXP name = Rf_installChar(STRING_ELT(names, i));
+            Rf_setAttrib(out, name, VECTOR_ELT(attrs, i));
+        }
+    }
+    if (Rf_isS4(src)) Rf_asS4(out, TRUE, FALSE);
+}
+#endif
+
 SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
     if (TYPEOF(fn) != CLOSXP) {
         Rf_error("`fn` must be a function");
@@ -612,7 +641,11 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
     int wrap_call_args = LOGICAL(wrap_call_args_sxp)[0];
     int quiet = LOGICAL(quiet_sxp)[0];
 
+#if IMPUTESRCREF_R_GE_4_6
+    SEXP fn_attrs = PROTECT(call_attributes(fn));
+#else
     SEXP fn_attrs = PROTECT(Rf_duplicate(ATTRIB(fn)));
+#endif
 
     /* `quiet` only suppresses the "no srcref" message emitted by
        source_text. OR with the ambient flag so a `quiet = TRUE` call inside an
@@ -629,7 +662,11 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
            impute nested closures that carry their own srcref (the S4 `.local`
            wrapper case). If none are found, return the function unchanged. */
         int imputed_any = 0;
+#if IMPUTESRCREF_R_GE_4_6
+        SEXP body_copy = PROTECT(Rf_duplicate(R_ClosureBody(fn)));
+#else
         SEXP body_copy = PROTECT(Rf_duplicate(BODY(fn)));
+#endif
         impute_nested_inplace(body_copy, wrap_call_args_sxp, quiet_sxp, &imputed_any);
         if (!imputed_any) {
             UNPROTECT(3); /* body_copy, src, fn_attrs */
@@ -643,10 +680,18 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
             }
             return fn;
         }
+#if IMPUTESRCREF_R_GE_4_6
+        /* No public body setter on R >= 4.6: rebuild the closure with the
+           imputed body, then restore attributes and the S4 object bit that
+           R_mkClosure drops (Rf_duplicate would have preserved them). */
+        SEXP out = PROTECT(R_mkClosure(R_ClosureFormals(fn), body_copy, R_ClosureEnv(fn)));
+        reapply_attributes(out, fn_attrs, fn);
+#else
         /* Rf_duplicate preserves formals, environment, attributes and the S4
            object bit; only the body changes. */
         SEXP out = PROTECT(Rf_duplicate(fn));
         SET_BODY(out, body_copy);
+#endif
         UNPROTECT(4); /* out, body_copy, src, fn_attrs */
         return out;
     }
@@ -746,18 +791,32 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
     SEXP fmls = PROTECT(call_formals(fn));
     SEXP bdy = PROTECT(call_body(fn));
     SEXP fnsym = PROTECT(Rf_install("function"));
+#if IMPUTESRCREF_R_GE_4_6
+    SEXP fn_expr = PROTECT(Rf_allocLang(3));
+#else
     SEXP fn_expr = PROTECT(Rf_allocList(3));
     SET_TYPEOF(fn_expr, LANGSXP);
+#endif
     SETCAR(fn_expr, fnsym);
     SETCAR(CDR(fn_expr), fmls);
     SETCAR(CDDR(fn_expr), bdy);
 
     SEXP transformed = PROTECT(imputesrcref_transform_expr(fn_expr, root_id, &ctx));
 
-    /* Apply to fn: out <- fn; formals(out) <- transformed[[2]]; body(out) <- transformed[[3]] */
-    SEXP out = PROTECT(Rf_duplicate(fn));
     SEXP new_formals = CADR(transformed);
     SEXP new_body = CADDR(transformed);
+
+#if IMPUTESRCREF_R_GE_4_6
+    /* No public formals/body setters on R >= 4.6: build a fresh closure with
+       the transformed formals/body and the original environment, then restore
+       attributes and the S4 object bit. */
+    SEXP out = PROTECT(R_mkClosure(new_formals != R_NilValue ? new_formals
+                                                             : R_ClosureFormals(fn),
+                                   new_body, R_ClosureEnv(fn)));
+    reapply_attributes(out, fn_attrs, fn);
+#else
+    /* Apply to fn: out <- fn; formals(out) <- transformed[[2]]; body(out) <- transformed[[3]] */
+    SEXP out = PROTECT(Rf_duplicate(fn));
 
     if (new_formals != R_NilValue) {
         SET_FORMALS(out, new_formals);
@@ -772,6 +831,7 @@ SEXP C_impute_srcrefs(SEXP fn, SEXP wrap_call_args_sxp, SEXP quiet_sxp) {
         Rf_setAttrib(out, tag, val);
         attr_iter = CDR(attr_iter);
     }
+#endif
 
     UNPROTECT(11);
     return out;

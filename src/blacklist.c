@@ -19,8 +19,17 @@ static SEXP compute_specialsxp_names(void) {
     for (R_xlen_t i = 0; i < n; i++) {
         const char *nm = CHAR(STRING_ELT(nms, i));
         SEXP sym = Rf_install(nm);
+#if IMPUTESRCREF_R_GE_4_6
+        /* Rf_findVarInFrame is non-API on R >= 4.6. Evaluating the symbol in
+           base env yields the bound value (base has no promises), and the
+           SPECIALSXP check below filters everything else. */
+        int err = 0;
+        SEXP obj = R_tryEvalSilent(sym, R_BaseEnv, &err);
+        if (!err && TYPEOF(obj) == SPECIALSXP) {
+#else
         SEXP obj = Rf_findVarInFrame(R_BaseEnv, sym);
         if (obj != R_UnboundValue && TYPEOF(obj) == SPECIALSXP) {
+#endif
             keep[i] = 1;
             kept++;
         } else {

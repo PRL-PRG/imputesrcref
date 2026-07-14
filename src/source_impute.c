@@ -118,8 +118,12 @@ static void emit_message(const char *txt) {
 static void sys_source_(SEXP file, SEXP envir, SEXP chdir, SEXP keep_source,
                         SEXP keep_parse_data, SEXP toplevel_env) {
     SEXP fn = PROTECT(base_fun("sys.source"));
+#if IMPUTESRCREF_R_GE_4_6
+    SEXP call = PROTECT(Rf_allocLang(7));
+#else
     SEXP call = PROTECT(Rf_allocList(7));
     SET_TYPEOF(call, LANGSXP);
+#endif
     SETCAR(call, fn);
     SEXP c1 = CDR(call); SETCAR(c1, file); SET_TAG(c1, Rf_install("file"));
     SEXP c2 = CDR(c1);   SETCAR(c2, envir); SET_TAG(c2, Rf_install("envir"));
