@@ -194,8 +194,7 @@ static SEXP impute_handler(SEXP cond, void *data) {
     SEXP msg = PROTECT(Rf_eval(call, R_GlobalEnv));
     const char *m = (TYPEOF(msg) == STRSXP && Rf_xlength(msg) >= 1)
                     ? CHAR(STRING_ELT(msg, 0)) : "<error>";
-    strncpy(err_msg_buf, m, sizeof(err_msg_buf) - 1);
-    err_msg_buf[sizeof(err_msg_buf) - 1] = '\0';
+    snprintf(err_msg_buf, sizeof(err_msg_buf), "%s", m);
     UNPROTECT(3);
     return R_NilValue;
 }
@@ -207,8 +206,7 @@ static SEXP try_impute_srcrefs(SEXP fn, int *err, char *msg_out, size_t msg_size
     if (err_msg_buf[0] != '\0') {
         *err = 1;
         if (msg_out && msg_size > 0) {
-            strncpy(msg_out, err_msg_buf, msg_size - 1);
-            msg_out[msg_size - 1] = '\0';
+            snprintf(msg_out, msg_size, "%s", err_msg_buf);
         }
         return R_NilValue;
     }
