@@ -90,4 +90,9 @@ jobs:
         run: Rscript -e "testthat::test_file('tests/testthat/test-package-srcref-imputation.R')"
 
       - name: Run check
+        # `mutator` is a Suggests dep used only by the mutation-testing workflow
+        # (installed there via pak), not by this package's own tests. It is not
+        # in the CI image, so don't let R CMD check ERROR on its absence.
+        env:
+          _R_CHECK_FORCE_SUGGESTS_: "false"
         run: R CMD check --no-manual .
