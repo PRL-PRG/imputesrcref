@@ -1,3 +1,8 @@
+<!-- badges: start -->
+[![Test Package](https://github.com/PRL-PRG/imputesrcref/actions/workflows/test.yml/badge.svg)](https://github.com/PRL-PRG/imputesrcref/actions/workflows/test.yml)
+[![r-universe](https://prl-prg.r-universe.dev/imputesrcref/badges/version)](https://prl-prg.r-universe.dev/imputesrcref)
+<!-- badges: end -->
+
 # imputesrcref
 
 `imputesrcref` imputes transparent `srcref` metadata for injected brace calls (`{`) in R function ASTs.
