@@ -1,6 +1,8 @@
 <!-- badges: start -->
 [![Test Package](https://github.com/PRL-PRG/imputesrcref/actions/workflows/test.yml/badge.svg)](https://github.com/PRL-PRG/imputesrcref/actions/workflows/test.yml)
 [![r-universe](https://prl-prg.r-universe.dev/imputesrcref/badges/version)](https://prl-prg.r-universe.dev/imputesrcref)
+[![Codecov test coverage](https://codecov.io/gh/PRL-PRG/imputesrcref/graph/badge.svg)](https://app.codecov.io/gh/PRL-PRG/imputesrcref)
+[![mutator](https://img.shields.io/endpoint?url=https%3A%2F%2Fprl-prg.github.io%2Fimputesrcref%2Fmutation-score.json)](https://github.com/PRL-PRG/imputesrcref/actions/workflows/mutation-testing.yaml)
 <!-- badges: end -->
 
 # imputesrcref

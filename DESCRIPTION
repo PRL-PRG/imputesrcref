@@ -16,7 +16,10 @@ Description: Rewrites R function ASTs by injecting transparent brace calls in
     namespace functions, including package-style 'srcref' line mappings.
 Suggests:
     ggplot2,
+    mutator,
     testthat (>= 3.0.0)
+Remotes:
+    PRL-PRG/mutator
 Config/testthat/edition: 3
 License: MIT + file LICENSE
 Encoding: UTF-8
